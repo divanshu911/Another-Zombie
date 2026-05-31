@@ -61,7 +61,7 @@ const sounds = {
     empty: new Audio('https://raw.githubusercontent.com/divanshu911/New-things/main/709910__astronaut77890__p226-empty-trigger-pull.wav')
 };
 sounds.bgMusic.loop = true;
-sounds.bgMusic.volume = 0.3;
+sounds.bgMusic.volume = 0.9;
 
 function playSound(audio) {
     audio.currentTime = 0;
