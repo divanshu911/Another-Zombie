@@ -101,7 +101,7 @@ function checkItemCol(nx, ny, r) {
     return allItems.some(item => Math.hypot(nx - item.x, ny - item.y) < r + 15);
 }
 
-// Dynamic visibility control to ensure overlays hide interactive controls on start/restart screens
+// Controls visibility mapping for full state overrides
 function setControlVisibility(visible) {
     const hudElement = document.getElementById('hud');
     const touchControlsElement = document.getElementById('touchControls');
@@ -507,7 +507,11 @@ bindTouch('btnFire', 'fire'); bindTouch('btnReload', 'reload');
 window.addEventListener('load', () => {
     window.addEventListener('resize', resize); resize(); 
     
-    // Hide all action panels and status HUD monitors during boot menus
+    // Fix: Explicitly ensure start screen is visible and end screens are hidden on browser load
+    document.getElementById('startScreen').classList.remove('hidden');
+    document.getElementById('endScreen').classList.add('hidden');
+    document.getElementById('pauseScreen').classList.add('hidden');
+    
     setControlVisibility(false);
     updateHUD();
 });
