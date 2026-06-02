@@ -10,6 +10,10 @@ let screenShake = 0;
 let biteSoundTimer = 0;
 let highWave = localStorage.getItem('highWave') || 1;
 
+// WAVE TIMER CONFIGURATION ENGINE
+let waveTimer = 0;
+const WAVE_DURATION = 30; // Seconds player has to clear a wave before stacking occurs
+
 // MAP SELECTOR ENGINE CONFIGURATION
 const backgrounds = {
     grass: 'https://raw.githubusercontent.com/divanshu911/New-things/736c8aca12961f3145a8257b1efde09b8e704130/IMG_GRASS911.jpg',
@@ -61,7 +65,7 @@ const sounds = {
     empty: new Audio('https://raw.githubusercontent.com/divanshu911/New-things/main/709910__astronaut77890__p226-empty-trigger-pull.wav')
 };
 sounds.bgMusic.loop = true;
-sounds.bgMusic.volume = 0.9;
+sounds.bgMusic.volume = 0.3;
 
 function playSound(audio) {
     audio.currentTime = 0;
@@ -286,7 +290,18 @@ function update() {
     for (let i = explosions.length - 1; i >= 0; i--) {
         let e = explosions[i]; e.r += 5; e.timer--; if (e.timer <= 0) explosions.splice(i, 1);
     }
-    if(zombies.length === 0 && gameState === 'PLAYING') { wave++; startWave(); }
+
+    // --- DUAL MODE AUTOMATIC TRIGGER CONTROLLER ---
+    if (gameState === 'PLAYING') {
+        if (waveTimer > 0) {
+            waveTimer--;
+        }
+        // Spawns if timer hits zero (stacking waves) OR if everything is dead (early wave advancement)
+        if (zombies.length === 0 || waveTimer <= 0) {
+            wave++;
+            startWave();
+        }
+    }
     updateHUD();
 }
 
@@ -345,15 +360,12 @@ function draw() {
     ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, -4, player.radius + 12, 8);
     ctx.beginPath(); ctx.arc(0, 0, player.radius, 0, Math.PI * 2); ctx.fillStyle = '#3498db'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
     if(player.shieldTimer > 0) { ctx.beginPath(); ctx.arc(player.x, player.y, 25, 0, Math.PI*2); ctx.strokeStyle='cyan'; ctx.lineWidth = 3; ctx.stroke(); }
-        // --- UPDATED BULLET GRAPHICS FOR HIGH VISIBILITY ON ALL MAPS ---
+    
     bullets.forEach(b => {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2); // Slightly increased size from 3 to 4.5
-        
-        // Deep Crimson outer footprint for high contrast on Snow & Desert
+        ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2);
         ctx.fillStyle = '#ff0044'; 
         ctx.fill();
-        
         ctx.beginPath();
         ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
@@ -378,14 +390,45 @@ function spawnItem(type) {
 }
 
 function updateHUD() {
-    document.getElementById('hpDisplay').innerText = `HP: ${Math.ceil(player.hp)}/100`;
+    // A. Track & Alter Health Bar Fill Component Width
+    const hpPct = Math.max(0, Math.min(100, player.hp));
+    const barFillElement = document.getElementById('hpBarFill');
+    if (barFillElement) {
+        barFillElement.style.width = `${hpPct}%`;
+        // Dynamic Warning Coloration shifting when drops under 30% HP
+        if (hpPct < 30) {
+            barFillElement.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+        } else {
+            barFillElement.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
+        }
+    }
+
+    // B. Text Overlay Render
+    const hpTextElement = document.getElementById('hpText');
+    if (hpTextElement) {
+        hpTextElement.innerText = `HP: ${Math.ceil(player.hp)}/100`;
+    }
+
+    // C. Weapon System Display Update
     document.getElementById('ammoDisplay').innerText = (player.isReloading) ? "RELOADING..." : (player.ammoTimer > 0 ? "INF AMMO" : `AMMO: ${player.ammo}/10`);
+    
+    // D. Timer System Display Update
+    const secondsLeft = Math.ceil(waveTimer / 60);
+    const timerElement = document.getElementById('timerDisplay');
+    if (timerElement) {
+        timerElement.innerText = `Next Wave in: ${Math.max(0, secondsLeft)}s`;
+    }
+
     document.getElementById('highScoreDisplay').innerText = `Best Wave: ${highWave}`;
     document.getElementById('waveDisplay').innerText = `Wave: ${wave}`;
 }
 
 function startWave() {
     if (wave > highWave) { highWave = wave; localStorage.setItem('highWave', highWave); }
+    
+    // Reset our dynamic frame timer countdown bounds
+    waveTimer = WAVE_DURATION * 60;
+
     for(let i=0; i<wave+2; i++) {
         let edge = Math.floor(Math.random() * 4); let zx, zy;
         if (edge === 0) { zx = Math.random() * canvas.width; zy = -50; }
@@ -408,6 +451,9 @@ function startGame() {
     gameState = 'PLAYING'; wave = 1; isPaused = false; player.hp = 100; player.ammo = 10;
     zombies = []; bullets = []; bombs = []; powerups = []; medkits = []; particles = []; explosions = [];
     
+    // Explicit initial timer tracking fill
+    waveTimer = WAVE_DURATION * 60;
+
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.add('hidden');
     document.getElementById('pauseScreen').classList.add('hidden');
