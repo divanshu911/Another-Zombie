@@ -21,13 +21,22 @@ const backgrounds = {
     snow: 'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_Snow117.png'
 };
 
-const bgImage = new Image();
+// --- PRELOADER ENGINE ---
+// Instantly cache images in memory to prevent screen flicker when switching fields
+const preloadedImages = {};
+for (const key in backgrounds) {
+    preloadedImages[key] = new Image();
+    preloadedImages[key].src = backgrounds[key];
+}
+
+let bgImage = preloadedImages['grass']; 
 
 // Unified Selector Sync Routine
 function selectBackground(bgKey) {
-    if (!backgrounds[bgKey]) return;
+    if (!preloadedImages[bgKey]) return;
     
-    bgImage.src = backgrounds[bgKey];
+    // Swap directly to the preloaded cache in memory
+    bgImage = preloadedImages[bgKey];
     localStorage.setItem('selectedBg', bgKey);
     
     // Cycle and re-assign active classes globally to sync both menus
@@ -101,17 +110,19 @@ function checkItemCol(nx, ny, r) {
     return allItems.some(item => Math.hypot(nx - item.x, ny - item.y) < r + 15);
 }
 
-// Dynamic visibility control to ensure overlays hide interactive controls on start/restart screens
 function setControlVisibility(visible) {
     const hudElement = document.getElementById('hud');
     const touchControlsElement = document.getElementById('touchControls');
+    const timerElement = document.getElementById('timerDisplay');
     
     if (visible) {
         hudElement.classList.remove('hidden');
         touchControlsElement.classList.remove('hidden');
+        timerElement.classList.remove('hidden');
     } else {
         hudElement.classList.add('hidden');
         touchControlsElement.classList.add('hidden');
+        timerElement.classList.add('hidden');
     }
 }
 
@@ -170,7 +181,10 @@ function triggerExplosion(x, y) {
     if (player.shieldTimer <= 0 && Math.hypot(player.x - x, player.y - y) < 140) player.hp -= 40;
     for (let i = zombies.length - 1; i >= 0; i--) {
         let z = zombies[i];
-        if (Math.hypot(z.x - x, z.y - y) < 140) z.hp -= 100;
+        if (Math.hypot(z.x - x, z.y - y) < 140) {
+            z.hp -= 100;
+            z.flashTimer = 4; // Trigger flash on explosion hit
+        }
     }
     updateHUD();
     if(player.hp <= 0) endGame("Exploded!");
@@ -241,6 +255,9 @@ function update() {
         }
     }
     zombies.forEach((z, idx) => {
+        // Decrement flash frames countdown
+        if (z.flashTimer > 0) z.flashTimer--;
+
         let ang = Math.atan2(player.y-z.y, player.x-z.x);
         let vx = Math.cos(ang) * z.speed, vy = Math.sin(ang) * z.speed;
         let canMoveX = !checkBuildingCol(z.x + vx, z.y, z.radius);
@@ -275,7 +292,13 @@ function update() {
         let b = bullets[i]; b.x += b.dx; b.y += b.dy; let hit = false;
         for (let j = zombies.length - 1; j >= 0; j--) {
             let z = zombies[j];
-            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius) { z.hp -= 5; spawnBlood(b.x, b.y, 4); hit = true; break; }
+            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius) { 
+                z.hp -= 5; 
+                z.flashTimer = 4; // Flash white for 4 rendering frames
+                spawnBlood(b.x, b.y, 4); 
+                hit = true; 
+                break; 
+            }
         }
         if (hit) bullets.splice(i, 1);
         else if (checkBuildingCol(b.x, b.y, 2) || b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
@@ -291,12 +314,10 @@ function update() {
         let e = explosions[i]; e.r += 5; e.timer--; if (e.timer <= 0) explosions.splice(i, 1);
     }
 
-    // --- DUAL MODE AUTOMATIC TRIGGER CONTROLLER ---
     if (gameState === 'PLAYING') {
         if (waveTimer > 0) {
             waveTimer--;
         }
-        // Spawns if timer hits zero (stacking waves) OR if everything is dead (early wave advancement)
         if (zombies.length === 0 || waveTimer <= 0) {
             wave++;
             startWave();
@@ -345,7 +366,15 @@ function draw() {
     });
     zombies.forEach(z => {
         ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
-        ctx.fillStyle = z.isBoss ? '#27ae60' : '#4E704D'; ctx.fill(); ctx.strokeStyle = '#1e3f20'; ctx.lineWidth = 2; ctx.stroke();
+        
+        // Flash Engine Processing Assignment
+        if (z.flashTimer > 0) {
+            ctx.fillStyle = '#ffffff'; // Fill absolute white on impact frame
+        } else {
+            ctx.fillStyle = z.isBoss ? '#27ae60' : '#4E704D';
+        }
+        
+        ctx.fill(); ctx.strokeStyle = '#1e3f20'; ctx.lineWidth = 2; ctx.stroke();
         let ang = Math.atan2(player.y - z.y, player.x - z.x); ctx.fillStyle = '#e74c3c';
         ctx.beginPath(); ctx.arc(z.x + Math.cos(ang + 0.3) * (z.radius * 0.5), z.y + Math.sin(ang + 0.3) * (z.radius * 0.5), 2.5, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(z.x + Math.cos(ang - 0.3) * (z.radius * 0.5), z.y + Math.sin(ang - 0.3) * (z.radius * 0.5), 2.5, 0, Math.PI * 2); ctx.fill();
@@ -390,12 +419,10 @@ function spawnItem(type) {
 }
 
 function updateHUD() {
-    // A. Track & Alter Health Bar Fill Component Width
     const hpPct = Math.max(0, Math.min(100, player.hp));
     const barFillElement = document.getElementById('hpBarFill');
     if (barFillElement) {
         barFillElement.style.width = `${hpPct}%`;
-        // Dynamic Warning Coloration shifting when drops under 30% HP
         if (hpPct < 30) {
             barFillElement.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
         } else {
@@ -403,20 +430,24 @@ function updateHUD() {
         }
     }
 
-    // B. Text Overlay Render
     const hpTextElement = document.getElementById('hpText');
     if (hpTextElement) {
         hpTextElement.innerText = `HP: ${Math.ceil(player.hp)}/100`;
     }
 
-    // C. Weapon System Display Update
     document.getElementById('ammoDisplay').innerText = (player.isReloading) ? "RELOADING..." : (player.ammoTimer > 0 ? "INF AMMO" : `AMMO: ${player.ammo}/10`);
     
-    // D. Timer System Display Update
-    const secondsLeft = Math.ceil(waveTimer / 60);
+    // Digital Countdown Timer Interface Formatting Engine
+    const totalSeconds = Math.max(0, Math.ceil(waveTimer / 60));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(seconds).padStart(2, '0');
+    
     const timerElement = document.getElementById('timerDisplay');
     if (timerElement) {
-        timerElement.innerText = `Next Wave in: ${Math.max(0, secondsLeft)}s`;
+        timerElement.innerText = `${formattedMinutes}:${formattedSeconds}`;
     }
 
     document.getElementById('highScoreDisplay').innerText = `Best Wave: ${highWave}`;
@@ -426,7 +457,6 @@ function updateHUD() {
 function startWave() {
     if (wave > highWave) { highWave = wave; localStorage.setItem('highWave', highWave); }
     
-    // Reset our dynamic frame timer countdown bounds
     waveTimer = WAVE_DURATION * 60;
 
     for(let i=0; i<wave+2; i++) {
@@ -435,7 +465,7 @@ function startWave() {
         else if (edge === 1) { zx = canvas.width + 50; zy = Math.random() * canvas.height; }
         else if (edge === 2) { zx = Math.random() * canvas.width; zy = canvas.height + 50; }
         else { zx = -50; zy = Math.random() * canvas.height; }
-        zombies.push({ x: zx, y: zy, hp: 15, maxHp: 15, speed: 1.2+(wave*0.05), radius: 15, isBoss: false });
+        zombies.push({ x: zx, y: zy, hp: 15, maxHp: 15, speed: 1.2+(wave*0.05), radius: 15, isBoss: false, flashTimer: 0 });
     }
     if(wave%5===0) {
         let edge = Math.floor(Math.random() * 4); let bx, by;
@@ -443,7 +473,7 @@ function startWave() {
         else if (edge === 1) { bx = canvas.width + 100; by = Math.random() * canvas.height; }
         else if (edge === 2) { bx = Math.random() * canvas.width; by = canvas.height + 100; }
         else { bx = -100; by = Math.random() * canvas.height; }
-        zombies.push({ x: bx, y: by, hp: 100, maxHp: 100, speed: 0.8, radius: 30, isBoss: true });
+        zombies.push({ x: bx, y: by, hp: 100, maxHp: 100, speed: 0.8, radius: 30, isBoss: true, flashTimer: 0 });
     }
 }
 
@@ -451,14 +481,12 @@ function startGame() {
     gameState = 'PLAYING'; wave = 1; isPaused = false; player.hp = 100; player.ammo = 10;
     zombies = []; bullets = []; bombs = []; powerups = []; medkits = []; particles = []; explosions = [];
     
-    // Explicit initial timer tracking fill
     waveTimer = WAVE_DURATION * 60;
 
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.add('hidden');
     document.getElementById('pauseScreen').classList.add('hidden');
     
-    // Controls are rendered completely visible once gameplay begins
     setControlVisibility(true);
     
     sounds.bgMusic.play(); startWave(); gameLoop();
@@ -469,7 +497,6 @@ function endGame(msg) {
     document.getElementById('endScreen').classList.remove('hidden');
     document.getElementById('endTitle').innerText = msg; 
     
-    // Controls are explicitly hidden on the game over overlay
     setControlVisibility(false);
     
     sounds.bgMusic.pause(); playSound(sounds.death);
@@ -506,8 +533,6 @@ bindTouch('btnFire', 'fire'); bindTouch('btnReload', 'reload');
 
 window.addEventListener('load', () => {
     window.addEventListener('resize', resize); resize(); 
-    
-    // Hide all action panels and status HUD monitors during boot menus
     setControlVisibility(false);
     updateHUD();
 });
