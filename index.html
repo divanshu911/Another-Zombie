@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zombie Survival 2D</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="rotateOverlay">
+        <div class="rotate-content">
+            <span class="rotate-icon">&#x1F504;</span>
+            <h2>Landscape Mode Required</h2>
+            <p>Please rotate your device horizontally to play!</p>
+        </div>
+    </div>
+    
+    <div id="hud">
+        <div id="hpBarContainer">
+            <div id="hpBarFill"></div>
+            <div id="hpText">HP: 100/100</div>
+        </div>
+
+        <div id="ammoDisplay">Ammo: 10/10</div>
+        
+        <div id="highScoreDisplay" style="color: #ffd700; font-size: 16px; margin-top: 5px;">Best Wave: 1</div>
+        <div id="waveDisplay">Wave: 1</div>
+        <div id="ammoPowerup" class="powerup-active hidden">Infinite Ammo!</div>
+        <div id="shieldPowerup" class="powerup-active hidden">Shield: 0s</div>
+        <div id="speedPowerup" class="powerup-active hidden">Speed Boost!</div>
+        <div id="freezePowerup" class="powerup-active hidden">Time Frozen: 0s</div>
+
+        <div id="coinDisplay" style="position: fixed; top: 20px; right: 80px; color: gold; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 4px black;">🪙 0</div>
+                 
+        <div id="pauseBtn">&#x23F8;</div>
+    </div>
+
+    <div id="timerDisplay">00:30</div>
+
+    <div id="startScreen" class="overlay">
+        <h1>ANOTHER ZOMBIE</h1>
+        <p>WASD: Move | SPACE: Fire | G: Reload | P: Pause</p>
+        
+        <div class="bg-selector-panel">
+            <p class="selector-label">CHOOSE BATTLEFIELD:</p>
+            <div class="selector-row">
+                <button class="map-btn map-grass" onclick="selectBackground('grass')">Grass Field</button>
+                <button class="map-btn map-desert" onclick="selectBackground('desert')">Desert Wasteland</button>
+                <button class="map-btn map-snow" onclick="selectBackground('snow')">Snow Outpost</button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button id="startBtn">Start Game</button>
+            <button class="shopBtn" onclick="openShop()" style="background: #9b59b6;">Upgrade Shop</button>
+        </div>
+    </div>
+
+    <div id="pauseScreen" class="overlay hidden">
+        <h1>GAME PAUSED</h1>
+        <p>Press P or click below to resume action</p>
+        <button id="resumeBtn">Resume Game</button>
+    </div>
+
+    <div id="endScreen" class="overlay hidden">
+        <h1 id="endTitle">Game Over</h1>
+        
+        <div class="bg-selector-panel">
+            <p class="selector-label">RETREAT TO NEW FIELD?</p>
+            <div class="selector-row">
+                <button class="map-btn map-grass" onclick="selectBackground('grass')">Grass Field</button>
+                <button class="map-btn map-desert" onclick="selectBackground('desert')">Desert Wasteland</button>
+                <button class="map-btn map-snow" onclick="selectBackground('snow')">Snow Outpost</button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button id="restartBtn">Restart Game</button>
+            <button class="shopBtn" onclick="openShop()" style="background: #9b59b6;">Upgrade Shop</button>
+        </div>
+    </div>
+
+    <div id="shopScreen" class="overlay hidden">
+        <button class="shop-side-back-btn" onclick="closeShop()">← Back</button>
+
+        <h1 style="color: gold;">UPGRADE SHOP</h1>
+        <p id="shopCoinText" style="font-size: 24px; color: white; font-weight: bold; margin-bottom: 20px;">🪙 0</p>
+        
+        <div class="shop-container">
+            <div class="shop-item">
+                <span>❤️ Max Health (+20) <br><small id="lvl-health">Lvl 0/5</small></span>
+                <button id="btn-health" onclick="buyUpgrade('health')">150</button>
+            </div>
+            <div class="shop-item">
+                <span>🔫 Max Ammo (+2) <br><small id="lvl-ammo">Lvl 0/5</small></span>
+                <button id="btn-ammo" onclick="buyUpgrade('ammo')">120</button>
+            </div>
+            <div class="shop-item">
+                <span>👟 Base Speed (+0.5) <br><small id="lvl-speed">Lvl 0/5</small></span>
+                <button id="btn-speed" onclick="buyUpgrade('speed')">160</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="touchControls">
+        <div class="d-pad">
+            <div class="btn" id="btnW">W</div>
+            <div class="d-pad-row">
+                <div class="btn" id="btnA">A</div>
+                <div class="btn" id="btnS">S</div>
+                <div class="btn" id="btnD">D</div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <div class="btn btn-action" id="btnReload">RELOAD</div>
+            <div class="btn btn-action" id="btnFire">FIRE</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
