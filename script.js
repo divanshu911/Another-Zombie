@@ -433,7 +433,7 @@ function draw() {
         ctx.globalAlpha = Math.max(0, ft.alpha);
         ctx.font = 'bold 22px "Courier New", Courier, monospace';
         
-        // 1. Draw a clean black outline to isolate text from grass/desert/snow color values
+        // 1. Draw a clean black outline to isolate text from background elements
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 4;
         ctx.lineJoin = 'round';
@@ -636,6 +636,14 @@ function openShop() {
 }
 
 function closeShop() {
+    const shopScreen = document.getElementById('shopScreen');
+    
+    // Fixes the layout scrolling alignment bug securely
+    if (shopScreen) {
+        shopScreen.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+
     document.getElementById('shopScreen').classList.add('hidden');
     if (gameState === 'START') {
         document.getElementById('startScreen').classList.remove('hidden');
@@ -644,6 +652,7 @@ function closeShop() {
     }
 }
 
+// Formula sets cost multiplier scaling by 1.5x per upgrade level
 function getCost(type) {
     return Math.floor(UPGRADE_BASE_COST[type] * Math.pow(1.5, upgrades[type]));
 }
