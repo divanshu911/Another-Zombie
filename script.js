@@ -60,7 +60,7 @@ const keys = { w: false, a: false, s: false, d: false };
 const player = {
     x: 0, y: 0, radius: 15, baseSpeed: 2.5, speed: 2.5, angle: 0,
     hp: 100, maxHp: 100, ammo: 10, maxAmmo: 10, isReloading: false,
-    ammoTimer: 0, shieldTimer: 0, speedTimer: 0, freezeTimer: 0
+    ammoTimer: 0, shieldTimer: 0, speedTimer: 0, freezeTimer: 0, reloadTimer: 0 // ADDED reloadTimer
 };
 
 function applyUpgrades() {
@@ -159,14 +159,15 @@ function shoot() {
     }
 }
 
+// FIX: Updated reload function to use the frame-based timer
 function reload() {
     if(player.isReloading || player.ammo === player.maxAmmo || isPaused) return;
-    player.isReloading = true; playSound(sounds.reload); updateHUD();
-    setTimeout(() => { 
-        if(gameState === 'PLAYING' && !isPaused) { 
-            player.ammo = player.maxAmmo; player.isReloading = false; updateHUD(); 
-        } 
-    }, 1200);
+    
+    player.isReloading = true; 
+    player.reloadTimer = 72; // ~1.2 seconds
+    
+    playSound(sounds.reload); 
+    updateHUD();
 }
 
 function togglePause() {
@@ -230,6 +231,19 @@ function update() {
     if(player.speedTimer > 0) { player.speedTimer--; if(player.speedTimer <= 0) player.speed = player.baseSpeed; }
     if(player.freezeTimer > 0) player.freezeTimer--;
     if(biteSoundTimer > 0) biteSoundTimer--;
+    
+    // FIX: Process the reloading state timer during the update loop
+    if(player.isReloading) {
+        if(player.reloadTimer > 0) {
+            player.reloadTimer--;
+        } else {
+            // Refill ammo when timer hits 0
+            player.ammo = player.maxAmmo;
+            player.isReloading = false;
+            updateHUD();
+        }
+    }
+    
     if(Math.random() < 0.005 && bombs.length < 3) spawnItem('bomb');
     if(Math.random() < 0.005 && medkits.length < 2) spawnItem('medkit');
     if(Math.random() < 0.008 && powerups.length < 3) spawnItem('powerup');
@@ -325,7 +339,8 @@ function update() {
         if (zombies[i].hp <= 0) { 
             spawnBlood(zombies[i].x, zombies[i].y, 12); 
             
-            let reward = zombies[i].isBoss ? 50 : 10;
+            // MODIFIED: Standard zombies give 5 coins, bosses give 30
+            let reward = zombies[i].isBoss ? 30 : 5;
             coins += reward;
             localStorage.setItem('zombieCoins', coins);
             floatingTexts.push({ x: zombies[i].x, y: zombies[i].y, text: `+${reward}`, alpha: 1.0 });
@@ -430,8 +445,18 @@ function draw() {
 
     floatingTexts.forEach(ft => {
         ctx.globalAlpha = Math.max(0, ft.alpha);
+        
+        // MODIFIED: Added a thick black outline and a bold font to ensure 
+        // the text is clearly visible on grass, snow, and desert backgrounds.
+        ctx.font = '900 24px "Segoe UI", Tahoma, sans-serif'; 
+        
+        // Draw the black outline first
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#000000';
+        ctx.strokeText(ft.text, ft.x - 15, ft.y);
+        
+        // Draw the gold fill text on top
         ctx.fillStyle = '#ffd700'; 
-        ctx.font = 'bold 20px Courier New';
         ctx.fillText(ft.text, ft.x - 15, ft.y);
     });
     ctx.globalAlpha = 1.0;
@@ -555,6 +580,10 @@ function startGame() {
     player.speedTimer = 0;
     player.ammoTimer = 0;
     player.freezeTimer = 0;
+    
+    // FIX: Added reloadTimer reset to ensure it clears out properly on restart
+    player.reloadTimer = 0; 
+    
     player.speed = player.baseSpeed;
     player.isReloading = false;
     
