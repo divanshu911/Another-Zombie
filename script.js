@@ -179,6 +179,10 @@ function togglePause() {
     } else {
         document.getElementById('pauseScreen').classList.add('hidden');
         sounds.bgMusic.play();
+        
+        // --- FPS FIX: Reset the render timer after unpausing ---
+        lastRenderTime = performance.now(); 
+        
         gameLoop();
     }
 }
@@ -598,6 +602,9 @@ function startGame() {
     
     setControlVisibility(true);
     
+    // --- FPS FIX: Reset the render timer right before the game begins ---
+    lastRenderTime = performance.now(); 
+    
     sounds.bgMusic.play(); startWave(); gameLoop();
 }
 
@@ -611,9 +618,30 @@ function endGame(msg) {
     sounds.bgMusic.pause(); playSound(sounds.death);
 }
 
-function gameLoop() {
+// --- FPS Limiter Variables ---
+let lastRenderTime = 0;
+const FPS_INTERVAL = 1000 / 60; // Target 60 FPS
+
+// --- FPS FIX: Updated gameLoop Function ---
+function gameLoop(timestamp) {
     if(gameState === 'PLAYING' && !isPaused) {
-        update(); draw(); animationId = requestAnimationFrame(gameLoop);
+        // Request the next frame immediately
+        animationId = requestAnimationFrame(gameLoop);
+        
+        // Safety check in case timestamp isn't passed on the very first call
+        if (!timestamp) timestamp = performance.now();
+        
+        // Calculate time elapsed since the last frame was rendered
+        let elapsed = timestamp - lastRenderTime;
+        
+        // Only update and draw if enough time has passed (16.66ms for 60fps)
+        if (elapsed >= FPS_INTERVAL) {
+            // Adjust lastRenderTime to account for any slight overshoots, keeping pacing smooth
+            lastRenderTime = timestamp - (elapsed % FPS_INTERVAL);
+            
+            update(); 
+            draw(); 
+        }
     }
 }
 
