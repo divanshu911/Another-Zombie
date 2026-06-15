@@ -12,13 +12,23 @@ let highWave = localStorage.getItem('highWave') || 1;
 
 // Economy and Upgrades Persistence
 let coins = parseInt(localStorage.getItem('zombieCoins')) || 0;
-let upgrades = JSON.parse(localStorage.getItem('zombieUpgrades')) || { health: 0, ammo: 0, speed: 0 };
-const UPGRADE_BASE_COST = { health: 150, ammo: 120, speed: 160 };
-let floatingTexts = []; // Stores the floating text objects
+let upgrades = JSON.parse(localStorage.getItem('zombieUpgrades')) || { health: 0, ammo: 0, speed: 0, bonusHealth: 0, piercing: 0, reloadDelay: 0 };
+
+// Ensure old saves load properly without breaking if they lack the new tier 2 keys
+upgrades.health = upgrades.health || 0;
+upgrades.ammo = upgrades.ammo || 0;
+upgrades.speed = upgrades.speed || 0;
+upgrades.bonusHealth = upgrades.bonusHealth || 0;
+upgrades.piercing = upgrades.piercing || 0;
+upgrades.reloadDelay = upgrades.reloadDelay || 0;
+
+// NEW: Added the base costs for the new tier 2 items
+const UPGRADE_BASE_COST = { health: 150, ammo: 120, speed: 160, bonusHealth: 250, piercing: 220, reloadDelay: 280 };
+let floatingTexts = []; 
 
 // WAVE TIMER CONFIGURATION ENGINE
 let waveTimer = 0;
-const WAVE_DURATION = 30; // Seconds player has to clear a wave before stacking occurs
+const WAVE_DURATION = 30; 
 
 // MAP SELECTOR ENGINE CONFIGURATION
 const backgrounds = {
@@ -60,7 +70,7 @@ const keys = { w: false, a: false, s: false, d: false };
 const player = {
     x: 0, y: 0, radius: 15, baseSpeed: 2.5, speed: 2.5, angle: 0,
     hp: 100, maxHp: 100, ammo: 10, maxAmmo: 10, isReloading: false,
-    ammoTimer: 0, shieldTimer: 0, speedTimer: 0, freezeTimer: 0, reloadTimer: 0 // ADDED reloadTimer
+    ammoTimer: 0, shieldTimer: 0, speedTimer: 0, freezeTimer: 0, reloadTimer: 0 
 };
 
 function applyUpgrades() {
@@ -152,19 +162,29 @@ function shoot() {
     if(player.isReloading || gameState !== 'PLAYING' || isPaused) return;
     if(player.ammo > 0 || player.ammoTimer > 0) {
         if(player.ammoTimer <= 0) player.ammo--;
-        bullets.push({ x: player.x, y: player.y, dx: Math.cos(player.angle)*12, dy: Math.sin(player.angle)*12 });
+        
+        // NEW: Bullet now pushes hitZombies array to track which zombies it pierced
+        bullets.push({ 
+            x: player.x, 
+            y: player.y, 
+            dx: Math.cos(player.angle)*12, 
+            dy: Math.sin(player.angle)*12, 
+            hitZombies: [] 
+        });
+        
         playSound(sounds.shoot); updateHUD();
     } else {
         playSound(sounds.empty);
     }
 }
 
-// FIX: Updated reload function to use the frame-based timer
 function reload() {
     if(player.isReloading || player.ammo === player.maxAmmo || isPaused) return;
     
     player.isReloading = true; 
-    player.reloadTimer = 72; // ~1.2 seconds
+    
+    // NEW: Base is 72 frames (~1.2s). Subtract 6 frames (100ms) per level.
+    player.reloadTimer = 72 - (upgrades.reloadDelay * 6); 
     
     playSound(sounds.reload); 
     updateHUD();
@@ -180,7 +200,6 @@ function togglePause() {
         document.getElementById('pauseScreen').classList.add('hidden');
         sounds.bgMusic.play();
         
-        // --- FPS FIX: Reset the render timer after unpausing ---
         lastRenderTime = performance.now(); 
         
         gameLoop();
@@ -236,12 +255,10 @@ function update() {
     if(player.freezeTimer > 0) player.freezeTimer--;
     if(biteSoundTimer > 0) biteSoundTimer--;
     
-    // FIX: Process the reloading state timer during the update loop
     if(player.isReloading) {
         if(player.reloadTimer > 0) {
             player.reloadTimer--;
         } else {
-            // Refill ammo when timer hits 0
             player.ammo = player.maxAmmo;
             player.isReloading = false;
             updateHUD();
@@ -324,15 +341,29 @@ function update() {
             }
         }
     });
+
+    // NEW: Updated bullet collision checking for Tier 2 Bullet Piercing logic
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; b.x += b.dx; b.y += b.dy; let hit = false;
+        
         for (let j = zombies.length - 1; j >= 0; j--) {
             let z = zombies[j];
-            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius) { 
-                z.hp -= 5; 
-                spawnBlood(b.x, b.y, 4); 
-                hit = true; 
-                break; 
+            // Check if bullet touches zombie AND hasn't already hit this exact zombie
+            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius && !b.hitZombies.includes(z)) {
+                z.hp -= 5;
+                spawnBlood(b.x, b.y, 4);
+                
+                // Record the zombie so it doesn't get hit repeatedly every frame
+                b.hitZombies.push(z);
+                
+                // Calculate piercing chance: Level 1 = 10% (0.10), Level 2 = 20% (0.20), etc.
+                let pierceChance = upgrades.piercing * 0.10;
+                
+                // If the random number is higher than pierceChance, it didn't pierce -> mark hit to delete
+                if (Math.random() >= pierceChance) {
+                    hit = true; 
+                    break; 
+                }
             }
         }
         if (hit) bullets.splice(i, 1);
@@ -343,7 +374,6 @@ function update() {
         if (zombies[i].hp <= 0) { 
             spawnBlood(zombies[i].x, zombies[i].y, 12); 
             
-            // MODIFIED: Standard zombies give 5 coins, bosses give 30
             let reward = zombies[i].isBoss ? 30 : 5;
             coins += reward;
             localStorage.setItem('zombieCoins', coins);
@@ -373,6 +403,14 @@ function update() {
             waveTimer--;
         }
         if (zombies.length === 0 || waveTimer <= 0) {
+            
+            // NEW: Tier 2 Bonus Health wave-completion trigger
+            if (upgrades.bonusHealth > 0) {
+                let healAmount = upgrades.bonusHealth * 10;
+                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                floatingTexts.push({ x: player.x, y: player.y - 20, text: `+${healAmount} HP`, alpha: 1.0 });
+            }
+            
             wave++;
             startWave();
         }
@@ -450,16 +488,12 @@ function draw() {
     floatingTexts.forEach(ft => {
         ctx.globalAlpha = Math.max(0, ft.alpha);
         
-        // MODIFIED: Added a thick black outline and a bold font to ensure 
-        // the text is clearly visible on grass, snow, and desert backgrounds.
         ctx.font = '900 24px "Segoe UI", Tahoma, sans-serif'; 
         
-        // Draw the black outline first
         ctx.lineWidth = 4;
         ctx.strokeStyle = '#000000';
         ctx.strokeText(ft.text, ft.x - 15, ft.y);
         
-        // Draw the gold fill text on top
         ctx.fillStyle = '#ffd700'; 
         ctx.fillText(ft.text, ft.x - 15, ft.y);
     });
@@ -585,7 +619,6 @@ function startGame() {
     player.ammoTimer = 0;
     player.freezeTimer = 0;
     
-    // FIX: Added reloadTimer reset to ensure it clears out properly on restart
     player.reloadTimer = 0; 
     
     player.speed = player.baseSpeed;
@@ -602,7 +635,6 @@ function startGame() {
     
     setControlVisibility(true);
     
-    // --- FPS FIX: Reset the render timer right before the game begins ---
     lastRenderTime = performance.now(); 
     
     sounds.bgMusic.play(); startWave(); gameLoop();
@@ -622,21 +654,15 @@ function endGame(msg) {
 let lastRenderTime = 0;
 const FPS_INTERVAL = 1000 / 60; // Target 60 FPS
 
-// --- FPS FIX: Updated gameLoop Function ---
 function gameLoop(timestamp) {
     if(gameState === 'PLAYING' && !isPaused) {
-        // Request the next frame immediately
         animationId = requestAnimationFrame(gameLoop);
         
-        // Safety check in case timestamp isn't passed on the very first call
         if (!timestamp) timestamp = performance.now();
         
-        // Calculate time elapsed since the last frame was rendered
         let elapsed = timestamp - lastRenderTime;
         
-        // Only update and draw if enough time has passed (16.66ms for 60fps)
         if (elapsed >= FPS_INTERVAL) {
-            // Adjust lastRenderTime to account for any slight overshoots, keeping pacing smooth
             lastRenderTime = timestamp - (elapsed % FPS_INTERVAL);
             
             update(); 
@@ -676,10 +702,18 @@ window.addEventListener('load', () => {
 });
 
 // --- SHOP & ECONOMY SYSTEM ---
+// NEW: Variable to track which menu we are looking at
+let currentShopTier = 1;
+
 function openShop() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.add('hidden');
     document.getElementById('shopScreen').classList.remove('hidden');
+    
+    // NEW: Always reset the shop to show Tier 1 when opened
+    currentShopTier = 2; // We set it to 2 so the toggle function below switches it back to 1
+    toggleShopTier();
+    
     updateShopUI();
 }
 
@@ -692,12 +726,39 @@ function closeShop() {
     }
 }
 
+// NEW FUNCTION: Handles the swapping between the two tiers
+function toggleShopTier() {
+    // Flip the current tier number
+    currentShopTier = currentShopTier === 1 ? 2 : 1;
+    
+    const tier1 = document.getElementById('tier1-wrapper');
+    const tier2 = document.getElementById('tier2-wrapper');
+    const toggleBtn = document.getElementById('toggleTierBtn');
+    
+    if (currentShopTier === 1) {
+        // Show Tier 1, Hide Tier 2
+        tier1.style.display = 'flex';
+        tier2.style.display = 'none';
+        
+        // Update the button appearance
+        toggleBtn.innerText = 'View Tier 2 Upgrades';
+        toggleBtn.style.background = '#3498db'; // Blue color
+    } else {
+        // Hide Tier 1, Show Tier 2
+        tier1.style.display = 'none';
+        tier2.style.display = 'block';
+        
+        // Update the button appearance
+        toggleBtn.innerText = 'View Tier 1 Upgrades';
+        toggleBtn.style.background = '#e67e22'; // Orange color
+    }
+}
+
 function getCost(type) {
     return Math.floor(UPGRADE_BASE_COST[type] * Math.pow(1.5, upgrades[type]));
 }
 
 function buyUpgrade(type) {
-    // MODIFIED: Maximum upgrade boundary updated from 4 to 5
     if (upgrades[type] >= 5) return; 
     
     let cost = getCost(type);
@@ -718,21 +779,37 @@ function buyUpgrade(type) {
 function updateShopUI() {
     document.getElementById('shopCoinText').innerText = `🪙 ${coins}`;
     
-    ['health', 'ammo', 'speed'].forEach(type => {
+    // Handle Tier 2 unlocking overlay lock visual logic
+    const tier2Overlay = document.getElementById('tier2-overlay');
+    if (tier2Overlay) {
+        if (highWave >= 17) {
+            tier2Overlay.style.display = 'none'; // Removes lock screen
+        } else {
+            tier2Overlay.style.display = 'flex'; // Shows lock screen
+        }
+    }
+    
+    // Renders all upgrades
+    ['health', 'ammo', 'speed', 'bonusHealth', 'piercing', 'reloadDelay'].forEach(type => {
         let lvlText = document.getElementById(`lvl-${type}`);
         let btn = document.getElementById(`btn-${type}`);
-        let cost = getCost(type);
         
-        // MODIFIED: String interpolated level limit text updated to 5
+        if (!btn || !lvlText) return; // Skip if button doesn't exist
+        
+        let cost = getCost(type);
         lvlText.innerText = `Lvl ${upgrades[type]}/5`;
         
-        // MODIFIED: State handler checks updated to 5
         if (upgrades[type] >= 5) {
             btn.innerText = "MAX";
             btn.disabled = true;
         } else {
             btn.innerText = `🪙 ${cost}`;
-            btn.disabled = coins < cost; 
+            
+            // Determine if the item is Tier 2 to handle conditional blocking
+            let isTier2 = ['bonusHealth', 'piercing', 'reloadDelay'].includes(type);
+            
+            // Button is disabled if player lacks coins OR if it is a Tier 2 item while player is below wave 17
+            btn.disabled = (coins < cost) || (isTier2 && highWave < 17); 
         }
     });
 }
