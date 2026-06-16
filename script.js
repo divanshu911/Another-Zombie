@@ -22,7 +22,7 @@ upgrades.bonusHealth = upgrades.bonusHealth || 0;
 upgrades.piercing = upgrades.piercing || 0;
 upgrades.reloadDelay = upgrades.reloadDelay || 0;
 
-// NEW: Added the base costs for the new tier 2 items
+// Base costs for items
 const UPGRADE_BASE_COST = { health: 150, ammo: 120, speed: 160, bonusHealth: 250, piercing: 220, reloadDelay: 280 };
 let floatingTexts = []; 
 
@@ -163,7 +163,6 @@ function shoot() {
     if(player.ammo > 0 || player.ammoTimer > 0) {
         if(player.ammoTimer <= 0) player.ammo--;
         
-        // NEW: Bullet now pushes hitZombies array to track which zombies it pierced
         bullets.push({ 
             x: player.x, 
             y: player.y, 
@@ -182,8 +181,6 @@ function reload() {
     if(player.isReloading || player.ammo === player.maxAmmo || isPaused) return;
     
     player.isReloading = true; 
-    
-    // NEW: Base is 72 frames (~1.2s). Subtract 6 frames (100ms) per level.
     player.reloadTimer = 72 - (upgrades.reloadDelay * 6); 
     
     playSound(sounds.reload); 
@@ -199,9 +196,7 @@ function togglePause() {
     } else {
         document.getElementById('pauseScreen').classList.add('hidden');
         sounds.bgMusic.play();
-        
         lastRenderTime = performance.now(); 
-        
         gameLoop();
     }
 }
@@ -303,7 +298,6 @@ function update() {
         if (z.flashTimer > 0) z.flashTimer--;
 
         let ang = Math.atan2(player.y-z.y, player.x-z.x);
-        
         let currentSpeed = player.freezeTimer > 0 ? 0 : z.speed;
         let vx = Math.cos(ang) * currentSpeed, vy = Math.sin(ang) * currentSpeed;
         
@@ -342,24 +336,17 @@ function update() {
         }
     });
 
-    // NEW: Updated bullet collision checking for Tier 2 Bullet Piercing logic
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i]; b.x += b.dx; b.y += b.dy; let hit = false;
         
         for (let j = zombies.length - 1; j >= 0; j--) {
             let z = zombies[j];
-            // Check if bullet touches zombie AND hasn't already hit this exact zombie
             if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius && !b.hitZombies.includes(z)) {
                 z.hp -= 5;
                 spawnBlood(b.x, b.y, 4);
-                
-                // Record the zombie so it doesn't get hit repeatedly every frame
                 b.hitZombies.push(z);
                 
-                // Calculate piercing chance: Level 1 = 10% (0.10), Level 2 = 20% (0.20), etc.
                 let pierceChance = upgrades.piercing * 0.10;
-                
-                // If the random number is higher than pierceChance, it didn't pierce -> mark hit to delete
                 if (Math.random() >= pierceChance) {
                     hit = true; 
                     break; 
@@ -373,21 +360,17 @@ function update() {
     for (let i = zombies.length - 1; i >= 0; i--) {
         if (zombies[i].hp <= 0) { 
             spawnBlood(zombies[i].x, zombies[i].y, 12); 
-            
             let reward = zombies[i].isBoss ? 30 : 5;
             coins += reward;
             localStorage.setItem('zombieCoins', coins);
             floatingTexts.push({ x: zombies[i].x, y: zombies[i].y, text: `+${reward}`, alpha: 1.0 });
-            
             zombies.splice(i, 1); 
         }
     }
 
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
-        ft.y -= 1; 
-        ft.alpha -= 0.02; 
-        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+        ft.y -= 1; ft.alpha -= 0.02; if (ft.alpha <= 0) floatingTexts.splice(i, 1);
     }
 
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -403,14 +386,11 @@ function update() {
             waveTimer--;
         }
         if (zombies.length === 0 || waveTimer <= 0) {
-            
-            // NEW: Tier 2 Bonus Health wave-completion trigger
             if (upgrades.bonusHealth > 0) {
                 let healAmount = upgrades.bonusHealth * 10;
                 player.hp = Math.min(player.maxHp, player.hp + healAmount);
                 floatingTexts.push({ x: player.x, y: player.y - 20, text: `+${healAmount} HP`, alpha: 1.0 });
             }
-            
             wave++;
             startWave();
         }
@@ -460,19 +440,12 @@ function draw() {
             ctx.moveTo(p.x + 5, p.y - 5); ctx.lineTo(p.x - 5, p.y + 5);
             ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x, p.y + 6);
             ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x + 6, p.y);
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
+            ctx.lineWidth = 1.5; stroke();
         }
     });
     zombies.forEach(z => {
         ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
-        
-        if (player.freezeTimer > 0) {
-            ctx.fillStyle = '#a5f2ff';
-        } else {
-            ctx.fillStyle = z.isBoss ? '#27ae60' : '#4E704D';
-        }
-        
+        ctx.fillStyle = player.freezeTimer > 0 ? '#a5f2ff' : (z.isBoss ? '#27ae60' : '#4E704D');
         ctx.fill(); ctx.strokeStyle = player.freezeTimer > 0 ? '#4ba3e3' : '#1e3f20'; ctx.lineWidth = 2; ctx.stroke();
         let ang = Math.atan2(player.y - z.y, player.x - z.x); ctx.fillStyle = player.freezeTimer > 0 ? '#4ba3e3' : '#e74c3c';
         ctx.beginPath(); ctx.arc(z.x + Math.cos(ang + 0.3) * (z.radius * 0.5), z.y + Math.sin(ang + 0.3) * (z.radius * 0.5), 2.5, 0, Math.PI * 2); ctx.fill();
@@ -487,15 +460,9 @@ function draw() {
 
     floatingTexts.forEach(ft => {
         ctx.globalAlpha = Math.max(0, ft.alpha);
-        
         ctx.font = '900 24px "Segoe UI", Tahoma, sans-serif'; 
-        
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#000000';
-        ctx.strokeText(ft.text, ft.x - 15, ft.y);
-        
-        ctx.fillStyle = '#ffd700'; 
-        ctx.fillText(ft.text, ft.x - 15, ft.y);
+        ctx.lineWidth = 4; ctx.strokeStyle = '#000000'; ctx.strokeText(ft.text, ft.x - 15, ft.y);
+        ctx.fillStyle = '#ffd700'; ctx.fillText(ft.text, ft.x - 15, ft.y);
     });
     ctx.globalAlpha = 1.0;
 
@@ -505,14 +472,8 @@ function draw() {
     if(player.shieldTimer > 0) { ctx.beginPath(); ctx.arc(player.x, player.y, 25, 0, Math.PI*2); ctx.strokeStyle='cyan'; ctx.lineWidth = 3; ctx.stroke(); }
     
     bullets.forEach(b => {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff0044'; 
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2); ctx.fillStyle = '#ff0044'; ctx.fill();
+        ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
     });
 
     explosions.forEach(e => { ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fillStyle=`rgba(255,100,0,${e.timer/20})`; ctx.fill(); });
@@ -537,17 +498,11 @@ function updateHUD() {
     const barFillElement = document.getElementById('hpBarFill');
     if (barFillElement) {
         barFillElement.style.width = `${hpPct}%`;
-        if (hpPct < 30) {
-            barFillElement.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
-        } else {
-            barFillElement.style.background = 'linear-gradient(90deg, #2ecc71, #27ae60)';
-        }
+        barFillElement.style.background = hpPct < 30 ? 'linear-gradient(90deg, #e74c3c, #c0392b)' : 'linear-gradient(90deg, #2ecc71, #27ae60)';
     }
 
     const hpTextElement = document.getElementById('hpText');
-    if (hpTextElement) {
-        hpTextElement.innerText = `HP: ${Math.ceil(player.hp)}/${player.maxHp}`;
-    }
+    if (hpTextElement) hpTextElement.innerText = `HP: ${Math.ceil(player.hp)}/${player.maxHp}`;
 
     document.getElementById('ammoDisplay').innerText = (player.isReloading) ? "RELOADING..." : (player.ammoTimer > 0 ? "INF AMMO" : `AMMO: ${player.ammo}/${player.maxAmmo}`);
     
@@ -558,25 +513,15 @@ function updateHUD() {
     const totalSeconds = Math.max(0, Math.ceil(waveTimer / 60));
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    
-    const formattedMinutes = String(minutes).padStart(2, '0');
-    const formattedSeconds = String(seconds).padStart(2, '0');
-    
     const timerElement = document.getElementById('timerDisplay');
     if (timerElement) {
-        timerElement.innerText = `${formattedMinutes}:${formattedSeconds}`;
-        
+        timerElement.innerText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         if (player.freezeTimer > 0) {
-            timerElement.style.backgroundColor = '#a5f2ff'; 
-            timerElement.style.color = '#0033aa';           
-            timerElement.style.boxShadow = '0 0 10px cyan'; 
-            timerElement.style.borderRadius = '5px';
-            timerElement.style.padding = '2px 8px';
+            timerElement.style.backgroundColor = '#a5f2ff'; timerElement.style.color = '#0033aa';           
+            timerElement.style.boxShadow = '0 0 10px cyan'; timerElement.style.borderRadius = '5px'; timerElement.style.padding = '2px 8px';
         } else {
-            timerElement.style.backgroundColor = 'transparent';
-            timerElement.style.color = ''; 
-            timerElement.style.boxShadow = 'none';
-            timerElement.style.padding = '0';
+            timerElement.style.backgroundColor = 'transparent'; timerElement.style.color = ''; 
+            timerElement.style.boxShadow = 'none'; timerElement.style.padding = '0';
         }
     }
 
@@ -586,7 +531,6 @@ function updateHUD() {
 
 function startWave() {
     if (wave > highWave) { highWave = wave; localStorage.setItem('highWave', highWave); }
-    
     waveTimer = WAVE_DURATION * 60;
 
     for(let i=0; i<wave+2; i++) {
@@ -609,34 +553,19 @@ function startWave() {
 
 function startGame() {
     gameState = 'PLAYING'; wave = 1; isPaused = false;
-    
     applyUpgrades();
-    player.hp = player.maxHp; 
-    player.ammo = player.maxAmmo;
-    
-    player.shieldTimer = 0;
-    player.speedTimer = 0;
-    player.ammoTimer = 0;
-    player.freezeTimer = 0;
-    
-    player.reloadTimer = 0; 
-    
-    player.speed = player.baseSpeed;
-    player.isReloading = false;
-    
+    player.hp = player.maxHp; player.ammo = player.maxAmmo;
+    player.shieldTimer = 0; player.speedTimer = 0; player.ammoTimer = 0; player.freezeTimer = 0; player.reloadTimer = 0; 
+    player.speed = player.baseSpeed; player.isReloading = false;
     zombies = []; bullets = []; bombs = []; powerups = []; medkits = []; particles = []; explosions = []; floatingTexts = [];
-    
     waveTimer = WAVE_DURATION * 60;
 
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.add('hidden');
     document.getElementById('pauseScreen').classList.add('hidden');
     document.getElementById('shopScreen').classList.add('hidden');
-    
     setControlVisibility(true);
-    
     lastRenderTime = performance.now(); 
-    
     sounds.bgMusic.play(); startWave(); gameLoop();
 }
 
@@ -644,29 +573,21 @@ function endGame(msg) {
     gameState = 'END'; 
     document.getElementById('endScreen').classList.remove('hidden');
     document.getElementById('endTitle').innerText = msg; 
-    
     setControlVisibility(false);
-    
     sounds.bgMusic.pause(); playSound(sounds.death);
 }
 
-// --- FPS Limiter Variables ---
 let lastRenderTime = 0;
-const FPS_INTERVAL = 1000 / 60; // Target 60 FPS
+const FPS_INTERVAL = 1000 / 60; 
 
 function gameLoop(timestamp) {
     if(gameState === 'PLAYING' && !isPaused) {
         animationId = requestAnimationFrame(gameLoop);
-        
         if (!timestamp) timestamp = performance.now();
-        
         let elapsed = timestamp - lastRenderTime;
-        
         if (elapsed >= FPS_INTERVAL) {
             lastRenderTime = timestamp - (elapsed % FPS_INTERVAL);
-            
-            update(); 
-            draw(); 
+            update(); draw(); 
         }
     }
 }
@@ -682,7 +603,6 @@ canvas.addEventListener('mousedown', shoot);
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('resumeBtn').addEventListener('click', togglePause);
-
 document.getElementById('pauseBtn').addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
 document.getElementById('pauseBtn').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); togglePause(); });
 
@@ -697,23 +617,18 @@ bindTouch('btnFire', 'fire'); bindTouch('btnReload', 'reload');
 window.addEventListener('load', () => {
     window.addEventListener('resize', resize); resize(); 
     setControlVisibility(false);
-    
     updateHUD();
 });
 
 // --- SHOP & ECONOMY SYSTEM ---
-// NEW: Variable to track which menu we are looking at
 let currentShopTier = 1;
 
 function openShop() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('endScreen').classList.add('hidden');
     document.getElementById('shopScreen').classList.remove('hidden');
-    
-    // NEW: Always reset the shop to show Tier 1 when opened
-    currentShopTier = 2; // We set it to 2 so the toggle function below switches it back to 1
+    currentShopTier = 2; 
     toggleShopTier();
-    
     updateShopUI();
 }
 
@@ -726,31 +641,22 @@ function closeShop() {
     }
 }
 
-// NEW FUNCTION: Handles the swapping between the two tiers
 function toggleShopTier() {
-    // Flip the current tier number
     currentShopTier = currentShopTier === 1 ? 2 : 1;
-    
     const tier1 = document.getElementById('tier1-wrapper');
     const tier2 = document.getElementById('tier2-wrapper');
     const toggleBtn = document.getElementById('toggleTierBtn');
     
     if (currentShopTier === 1) {
-        // Show Tier 1, Hide Tier 2
         tier1.style.display = 'flex';
         tier2.style.display = 'none';
-        
-        // Update the button appearance
         toggleBtn.innerText = 'View Tier 2 Upgrades';
-        toggleBtn.style.background = '#3498db'; // Blue color
+        toggleBtn.style.background = '#3498db';
     } else {
-        // Hide Tier 1, Show Tier 2
         tier1.style.display = 'none';
         tier2.style.display = 'block';
-        
-        // Update the button appearance
         toggleBtn.innerText = 'View Tier 1 Upgrades';
-        toggleBtn.style.background = '#e67e22'; // Orange color
+        toggleBtn.style.background = '#e67e22';
     }
 }
 
@@ -760,15 +666,12 @@ function getCost(type) {
 
 function buyUpgrade(type) {
     if (upgrades[type] >= 5) return; 
-    
     let cost = getCost(type);
     if (coins >= cost) {
         coins -= cost;
         upgrades[type]++;
-        
         localStorage.setItem('zombieCoins', coins);
         localStorage.setItem('zombieUpgrades', JSON.stringify(upgrades));
-        
         playSound(sounds.powerup);
         applyUpgrades();
         updateShopUI();
@@ -777,24 +680,21 @@ function buyUpgrade(type) {
 }
 
 function updateShopUI() {
-    document.getElementById('shopCoinText').innerText = `🪙 ${coins}`;
-    
-    // Handle Tier 2 unlocking overlay lock visual logic
-    const tier2Overlay = document.getElementById('tier2-overlay');
-    if (tier2Overlay) {
-        if (highWave >= 17) {
-            tier2Overlay.style.display = 'none'; // Removes lock screen
-        } else {
-            tier2Overlay.style.display = 'flex'; // Shows lock screen
-        }
+    // FIXED: Added a safety check so removing the element from HTML won't crash the script
+    const shopCoinText = document.getElementById('shopCoinText');
+    if (shopCoinText) {
+        shopCoinText.innerText = `🪙 ${coins}`;
     }
     
-    // Renders all upgrades
+    const tier2Overlay = document.getElementById('tier2-overlay');
+    if (tier2Overlay) {
+        tier2Overlay.style.display = highWave >= 17 ? 'none' : 'flex';
+    }
+    
     ['health', 'ammo', 'speed', 'bonusHealth', 'piercing', 'reloadDelay'].forEach(type => {
         let lvlText = document.getElementById(`lvl-${type}`);
         let btn = document.getElementById(`btn-${type}`);
-        
-        if (!btn || !lvlText) return; // Skip if button doesn't exist
+        if (!btn || !lvlText) return;
         
         let cost = getCost(type);
         lvlText.innerText = `Lvl ${upgrades[type]}/5`;
@@ -804,11 +704,7 @@ function updateShopUI() {
             btn.disabled = true;
         } else {
             btn.innerText = `🪙 ${cost}`;
-            
-            // Determine if the item is Tier 2 to handle conditional blocking
             let isTier2 = ['bonusHealth', 'piercing', 'reloadDelay'].includes(type);
-            
-            // Button is disabled if player lacks coins OR if it is a Tier 2 item while player is below wave 17
             btn.disabled = (coins < cost) || (isTier2 && highWave < 17); 
         }
     });
