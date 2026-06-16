@@ -13,6 +13,11 @@ body, html {
 
 #gameCanvas { 
     display: block; 
+    /* FIXED: Locks canvas in the background */
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 /* --- OVERLAY SCREENS CONFIGURATIONS (START/PAUSE/END) --- */
