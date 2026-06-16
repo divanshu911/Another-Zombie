@@ -440,8 +440,9 @@ function draw() {
             ctx.moveTo(p.x + 5, p.y - 5); ctx.lineTo(p.x - 5, p.y + 5);
             ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x, p.y + 6);
             ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x + 6, p.y);
-            ctx.lineWidth = 1.5; stroke();
+            ctx.lineWidth = 1.5; ctx.stroke(); // Fix: Added "ctx." before stroke()
         }
+
     });
     zombies.forEach(z => {
         ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
