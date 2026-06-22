@@ -76,7 +76,8 @@ const player = {
 function applyUpgrades() {
     player.maxHp = 100 + (upgrades.health * 20);
     player.maxAmmo = 10 + (upgrades.ammo * 2);
-    player.baseSpeed = 2.5 + (upgrades.speed * 0.5);
+    // UPDATED: Adjusted speed multiplier from 0.5 to 0.3
+    player.baseSpeed = 2.5 + (upgrades.speed * 0.3);
 }
 applyUpgrades(); 
 
@@ -110,14 +111,17 @@ function generateBuildings() {
     const w = canvas.width, h = canvas.height;
     const bSize = Math.min(100, Math.max(50, w * 0.15));
     const pad = bSize;
+    
+    // Calculate the perfect vertical center for the buildings
+    const centerY = h / 2 - bSize / 2;
+
     buildings = [
-        { x: pad, y: pad, w: bSize, h: bSize },
-        { x: w - bSize - pad, y: pad, w: bSize, h: bSize },
-        { x: pad, y: h - bSize - pad, w: bSize, h: bSize },
-        { x: w - bSize - pad, y: h - bSize - pad, w: bSize, h: bSize },
-        { x: w/2 - bSize/2, y: h/2 - bSize/2, w: bSize, h: bSize }
+        { x: pad, y: centerY, w: bSize, h: bSize },                        // 1. Left Center Building
+        { x: w / 2 - bSize / 2, y: centerY, w: bSize, h: bSize },          // 2. Center Building
+        { x: w - bSize - pad, y: centerY, w: bSize, h: bSize }             // 3. Right Center Building
     ];
 }
+
 
 function checkBuildingCol(nx, ny, r) {
     return buildings.some(b => nx + r > b.x && nx - r < b.x + b.w && ny + r > b.y && ny - r < b.y + b.h);
@@ -440,7 +444,7 @@ function draw() {
             ctx.moveTo(p.x + 5, p.y - 5); ctx.lineTo(p.x - 5, p.y + 5);
             ctx.moveTo(p.x, p.y - 6); ctx.lineTo(p.x, p.y + 6);
             ctx.moveTo(p.x - 6, p.y); ctx.lineTo(p.x + 6, p.y);
-            ctx.lineWidth = 1.5; ctx.stroke(); // Fix: Added "ctx." before stroke()
+            ctx.lineWidth = 1.5; ctx.stroke(); 
         }
 
     });
@@ -540,7 +544,11 @@ function startWave() {
         else if (edge === 1) { zx = canvas.width + 50; zy = Math.random() * canvas.height; }
         else if (edge === 2) { zx = Math.random() * canvas.width; zy = canvas.height + 50; }
         else { zx = -50; zy = Math.random() * canvas.height; }
-        zombies.push({ x: zx, y: zy, hp: 15, maxHp: 15, speed: 1.2+(wave*0.05), radius: 15, isBoss: false, flashTimer: 0 });
+        
+        // UPDATED: Calculate wave speed increase, but cap the maximum speed at 1.90
+        let zombieSpeed = Math.min(1.90, 1.2 + (wave * 0.05));
+        
+        zombies.push({ x: zx, y: zy, hp: 15, maxHp: 15, speed: zombieSpeed, radius: 15, isBoss: false, flashTimer: 0 });
     }
     if(wave%5===0) {
         let edge = Math.floor(Math.random() * 4); let bx, by;
