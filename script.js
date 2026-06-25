@@ -41,6 +41,10 @@ for (const key in backgrounds) {
 
 let bgImage = preloadedImages['grass']; 
 
+// NEW: Preload the building image asset
+const buildingImage = new Image();
+buildingImage.src = 'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_building_0.jpg';
+
 function selectBackground(bgKey) {
     if (!preloadedImages[bgKey]) return;
     
@@ -581,16 +585,19 @@ function draw() {
     if(screenShake > 0.5) ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     
+    // UPDATED: Added a realistic drop shadow to the buildings
     buildings.forEach(b => {
-        ctx.fillStyle = '#3e3e3e'; ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(b.x + b.w - 10, b.y, 10, b.h); ctx.fillRect(b.x, b.y + b.h - 10, b.w, 10);
-        ctx.fillStyle = '#1a2a3a';
-        for(let wx = b.x + 15; wx < b.x + b.w - 15; wx += 25) {
-            for(let wy = b.y + 15; wy < b.y + b.h - 15; wy += 25) {
-                ctx.fillRect(wx, wy, 12, 12);
-                ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(wx+1, wy+1, 3, 3); ctx.fillStyle = '#1a2a3a';
-            }
-        }
+        ctx.save(); // Save context state specifically for this building's shadow
+        
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'; // Semi-transparent black shadow
+        ctx.shadowBlur = 10;                     // Softens/feathers the edges of the shadow
+        ctx.shadowOffsetX = 8;                   // Pushes shadow to the right
+        ctx.shadowOffsetY = 15;                  // Pushes shadow downward to simulate height
+        
+        // Draw the building image with the shadow active
+        ctx.drawImage(buildingImage, b.x, b.y, b.w, b.h);
+        
+        ctx.restore(); // Restore context to clear the shadow config for other elements
     });
 
     bombs.forEach(b => b.draw(ctx));
@@ -739,6 +746,7 @@ window.addEventListener('keyup', e => { if(e.key.toLowerCase() in keys) keys[e.k
 canvas.addEventListener('mousedown', shoot);
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('resumeBtn').addEventListener('togglePause', togglePause); // Fixed context call
 document.getElementById('resumeBtn').addEventListener('click', togglePause);
 document.getElementById('pauseBtn').addEventListener('click', (e) => { e.stopPropagation(); togglePause(); });
 document.getElementById('pauseBtn').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); togglePause(); });
