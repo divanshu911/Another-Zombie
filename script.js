@@ -43,7 +43,7 @@ let bgImage = preloadedImages['grass'];
 
 // NEW: Preload the building image asset
 const buildingImage = new Image();
-buildingImage.src = 'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_building_1.jpg';
+buildingImage.src = 'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_building_3.jpg';
 
 function selectBackground(bgKey) {
     if (!preloadedImages[bgKey]) return;
