@@ -41,9 +41,19 @@ for (const key in backgrounds) {
 
 let bgImage = preloadedImages['grass']; 
 
-// NEW: Preload the building image asset
-const buildingImage = new Image();
-buildingImage.src = 'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_building_3.jpg';
+// NEW: Preload the 3 unique building image assets
+const buildingImages = [];
+const buildingUrls = [
+    'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_bluehouse6.jpg',
+    'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_circle6_1.jpg',
+    'https://raw.githubusercontent.com/divanshu911/New-things/refs/heads/main/IMG_vent_4.jpg'
+];
+
+buildingUrls.forEach(url => {
+    let img = new Image();
+    img.src = url;
+    buildingImages.push(img);
+});
 
 function selectBackground(bgKey) {
     if (!preloadedImages[bgKey]) return;
@@ -343,10 +353,11 @@ function generateBuildings() {
     const pad = bSize;
     const centerY = h / 2 - bSize / 2;
 
+    // Assigning a specific image to each building
     buildings = [
-        { x: pad, y: centerY, w: bSize, h: bSize },                        
-        { x: w / 2 - bSize / 2, y: centerY, w: bSize, h: bSize },          
-        { x: w - bSize - pad, y: centerY, w: bSize, h: bSize }             
+        { x: pad, y: centerY, w: bSize, h: bSize, img: buildingImages[0] },                        
+        { x: w / 2 - bSize / 2, y: centerY, w: bSize, h: bSize, img: buildingImages[1] },          
+        { x: w - bSize - pad, y: centerY, w: bSize, h: bSize, img: buildingImages[2] }             
     ];
 }
 
@@ -585,7 +596,7 @@ function draw() {
     if(screenShake > 0.5) ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     
-    // UPDATED: Added a realistic drop shadow to the buildings
+    // UPDATED: Rendering the correct building image with shadows
     buildings.forEach(b => {
         ctx.save(); // Save context state specifically for this building's shadow
         
@@ -594,8 +605,10 @@ function draw() {
         ctx.shadowOffsetX = 8;                   // Pushes shadow to the right
         ctx.shadowOffsetY = 15;                  // Pushes shadow downward to simulate height
         
-        // Draw the building image with the shadow active
-        ctx.drawImage(buildingImage, b.x, b.y, b.w, b.h);
+        // Draw the unique building image assigned during generation
+        if (b.img && b.img.complete) {
+            ctx.drawImage(b.img, b.x, b.y, b.w, b.h);
+        }
         
         ctx.restore(); // Restore context to clear the shadow config for other elements
     });
