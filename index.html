@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zombie Survival 2D</title>
+    <title>Another Zombie</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Landscape Requirement Guard -->
     <div id="rotateOverlay">
         <div class="rotate-content">
             <span class="rotate-icon">&#x1F504;</span>
@@ -15,8 +16,8 @@
         </div>
     </div>
 
+    <!-- HUD Elements -->
     <div id="coinDisplay">0</div>
-         
     <div id="hud">
         <div id="hpBarContainer">
             <div id="hpBarFill"></div>
@@ -26,20 +27,27 @@
         <div id="highScoreDisplay" style="color: #ffd700; font-size: 16px; margin-top: 5px;">Best Wave: 1</div>
         <div id="waveDisplay">Wave: 1</div>
         
+        <!-- Powerups -->
         <div id="ammoPowerup" class="powerup-active hidden">Infinite Ammo!</div>
         <div id="shieldPowerup" class="powerup-active hidden">Shield: 0s</div>
         <div id="speedPowerup" class="powerup-active hidden">Speed Boost!</div>
         <div id="freezePowerup" class="powerup-active hidden">Time Frozen: 0s</div>
-                          
+        
         <div id="pauseBtn">&#x23F8;</div>
     </div>
-    
     <div id="timerDisplay">00:30</div>
-    
-    <div id="startScreen" class="overlay">
+
+    <!-- NEW: Loading Screen -->
+    <div id="loadingScreen" class="overlay">
+        <h1 style="color: #2ecc71;">LOADING ASSETS...</h1>
+        <p>Preparing the battlefield, please wait.</p>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="overlay hidden">
         <h1>ANOTHER ZOMBIE</h1>
         <p>WASD: Move | SPACE: Fire | G: Reload | P: Pause</p>
-                 
+        
         <div class="bg-selector-panel">
             <p class="selector-label">CHOOSE BATTLEFIELD:</p>
             <div class="selector-row">
@@ -54,15 +62,16 @@
         </div>
     </div>
 
+    <!-- Pause Screen -->
     <div id="pauseScreen" class="overlay hidden">
         <h1>GAME PAUSED</h1>
         <p>Press P or click below to resume action</p>
         <button id="resumeBtn">Resume Game</button>
     </div>
 
+    <!-- End Screen -->
     <div id="endScreen" class="overlay hidden">
         <h1 id="endTitle">Game Over</h1>
-                 
         <div class="bg-selector-panel">
             <p class="selector-label">RETREAT TO NEW FIELD?</p>
             <div class="selector-row">
@@ -77,6 +86,7 @@
         </div>
     </div>
 
+    <!-- Shop Screen -->
     <div id="shopScreen" class="overlay hidden">
         <button class="shop-side-back-btn" onclick="closeShop()">Back</button>
         
@@ -84,38 +94,35 @@
         
         <div id="tier1-wrapper" class="shop-container">
             <div class="shop-item">
-                <span>❤️ Max Health (+20) <br><small id="lvl-health">Lvl 0/5</small></span>
-                <button id="btn-health" onclick="buyUpgrade('health')">🪙150</button>
+                <span> ❤️Max Health (+20) <br><small id="lvl-health">Lvl 0/5</small></span>
+                <button id="btn-health" onclick="buyUpgrade('health')"> 🪙150</button>
             </div>
             <div class="shop-item">
-                <span>🏹 Max Ammo (+2) <br><small id="lvl-ammo">Lvl 0/5</small></span>
-                <button id="btn-ammo" onclick="buyUpgrade('ammo')">🪙120</button>
+                <span> 🔫Max Ammo (+2) <br><small id="lvl-ammo">Lvl 0/5</small></span>
+                <button id="btn-ammo" onclick="buyUpgrade('ammo')"> 🪙120</button>
             </div>
             <div class="shop-item">
-                <span>🛼 Base Speed (+0.3) <br><small id="lvl-speed">Lvl 0/5</small></span>
-                <button id="btn-speed" onclick="buyUpgrade('speed')">🪙160</button>
+                <span> 🛼Base Speed (+0.3) <br><small id="lvl-speed">Lvl 0/5</small></span>
+                <button id="btn-speed" onclick="buyUpgrade('speed')"> 🪙160</button>
             </div>
         </div>
-
         <div id="tier2-wrapper" style="display: none; position: relative; width: 320px;">
             <h2 style="color: #a5f2f3; margin-top: 0px; margin-bottom: 10px; font-size: 18px; letter-spacing: 1px; text-align: center;">TIER 2 (Unlocks at Wave 17)</h2>
-                         
             <div id="tier2-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:10; border-radius: 8px;">
-                <span style="color: #ff4444; font-weight: bold; font-size: 14px;">🔒Reach Wave 17 to Unlock</span>
+                <span style="color: #ff4444; font-weight: bold; font-size: 14px;"> 🔒Reach Wave 17 to Unlock</span>
             </div>
-                         
             <div id="tier2-container" class="shop-container">
                 <div class="shop-item">
-                    <span>❤️ Bonus Health (+10/wave) <br><small id="lvl-bonusHealth">Lvl 0/5</small></span>
-                    <button id="btn-bonusHealth" onclick="buyUpgrade('bonusHealth')">🪙250</button>
+                    <span> ❤️Bonus Health (+10/wave) <br><small id="lvl-bonusHealth">Lvl 0/5</small></span>
+                    <button id="btn-bonusHealth" onclick="buyUpgrade('bonusHealth')"> 🪙250</button>
                 </div>
                 <div class="shop-item">
-                    <span>🏹 Bullet Piercing (+10%) <br><small id="lvl-piercing">Lvl 0/5</small></span>
-                    <button id="btn-piercing" onclick="buyUpgrade('piercing')">🪙220</button>
+                    <span> 🏹Bullet Piercing (+10%) <br><small id="lvl-piercing">Lvl 0/5</small></span>
+                    <button id="btn-piercing" onclick="buyUpgrade('piercing')"> 🪙220</button>
                 </div>
                 <div class="shop-item">
-                    <span>🕐 Less Reload Delay (-100ms)<br><small id="lvl-reloadDelay">Lvl 0/5</small></span>
-                    <button id="btn-reloadDelay" onclick="buyUpgrade('reloadDelay')">🪙280</button>
+                    <span> 🕓Less Reload Delay (-100ms)<br><small id="lvl-reloadDelay">Lvl 0/5</small></span>
+                    <button id="btn-reloadDelay" onclick="buyUpgrade('reloadDelay')"> 🪙280</button>
                 </div>
             </div>
         </div>
@@ -123,13 +130,14 @@
 
     <canvas id="gameCanvas"></canvas>
     
+    <!-- Mobile Touch Controls -->
     <div id="touchControls">
         <div class="d-pad">
-            <div class="btn" id="btnW">⬆️</div>
+            <div class="btn" id="btnW">W</div>
             <div class="d-pad-row">
-                <div class="btn" id="btnA">⬅️</div>
-                <div class="btn" id="btnS">⬇️</div>
-                <div class="btn" id="btnD">➡️</div>
+                <div class="btn" id="btnA">A</div>
+                <div class="btn" id="btnS">S</div>
+                <div class="btn" id="btnD">D</div>
             </div>
         </div>
         <div class="action-buttons">
